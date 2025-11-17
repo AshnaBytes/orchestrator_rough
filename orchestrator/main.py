@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from orchestrator.lib import state_manager
 from orchestrator.lib.backend_client import get_rules_from_backend
 from orchestrator.lib.brain_client import call_brain   # ⬅ NEW IMPORT
+from orchestrator.lib.nlu_client import call_nlu
+
 
 STRATEGY_ENGINE_URL = "http://strategy-engine:8000"
 
@@ -92,15 +94,19 @@ async def chat_endpoint(payload: ChatInput):
         # -------------------------------------------------
         # 2️⃣ TEMPORARY VALUES (because real backend & NLU not ready yet)
         # -------------------------------------------------
+
+        # --- Call NLU (MS2)
         mam = 150.0              # from backend later
         asking_price = 200.0     # from backend later
 
         # simple numeric detection
-        user_offer = float(payload.message) if payload.message.isdigit() else 0.0
+        nlu = await call_nlu(payload.message, session_id=session_id)
 
-        user_intent = "propose_offer"     # placeholder NLU logic
-        user_sentiment = "neutral"        # placeholder NLU logic
+        user_intent = nlu["intent"]
+        user_sentiment = nlu["sentiment"]   
+        user_offer = float(nlu["entities"]["PRICE"]) if nlu["entities"]["PRICE"] else 0.0     
 
+       
         # -------------------------------------------------
         # 3️⃣ CALL STRATEGY ENGINE ("THE BRAIN")
         # -------------------------------------------------
