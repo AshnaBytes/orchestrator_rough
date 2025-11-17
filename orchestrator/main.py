@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from orchestrator.lib import state_manager
 from orchestrator.lib.backend_client import get_rules_from_backend
 from orchestrator.lib.brain_client import call_brain   # ⬅ NEW IMPORT
-STRATEGY_ENGINE_URL = "http://strategy-engine:8000/decide"
+
+STRATEGY_ENGINE_URL = "http://strategy-engine:8000"
+
 
 
 # ---------------------------------------------------------
@@ -102,14 +104,17 @@ async def chat_endpoint(payload: ChatInput):
         # -------------------------------------------------
         # 3️⃣ CALL STRATEGY ENGINE ("THE BRAIN")
         # -------------------------------------------------
+       
         brain = await call_brain(
             mam=mam,
             asking_price=asking_price,
             user_offer=user_offer,
             user_intent=user_intent,
             user_sentiment=user_sentiment,
+            session_id=session_id,
             history=history,
         )
+
 
         logger.info(f"Brain responded: {brain}")
 

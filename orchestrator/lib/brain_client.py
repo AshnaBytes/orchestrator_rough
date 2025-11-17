@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger("brain_client")
 
-STRATEGY_ENGINE_URL = "http://strategy-engine:8001/decide"
+STRATEGY_ENGINE_URL = "http://strategy-engine:8000"
 
 INTENT_MAP = {
     "propose_offer": "MAKE_OFFER",
