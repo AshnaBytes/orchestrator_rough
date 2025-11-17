@@ -1,0 +1,38 @@
+# Purpose: Defines and runs the multi-container dev environment.
+# (v3 - Fixing path)
+
+version: '3.8' # You can remove this line to fix the 'obsolete' warning
+
+services:
+  # Service 1: Our Strategy Engine (MS 4)
+  strategy-engine:
+    build:
+      context: . # Use the Dockerfile in the current directory
+      dockerfile: Dockerfile
+    image: ina-strategy-engine:latest
+    container_name: strategy-engine
+    ports:
+      - "8000:8000" # Map host port 8000 to container port 8000
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis # Tell Docker to start Redis *before* starting our app
+    volumes:
+      # --- THIS IS THE CRITICAL FIX ---
+      # Mount your local './app' folder to '/service/app' inside the container
+      # This matches the new structure in the Dockerfile
+      - ./app:/service/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Service 2: The Dialogue State Tracker (MS 3)
+  redis:
+    image: "redis:7-alpine" # Use a small, official Redis image
+    container_name: ms3-redis-tracker
+    ports:
+      - "6379:6379" # Expose Redis on the host for debugging (optional)
+    volumes:
+      - redis_data:/data # Persist Redis data
+
+volumes:
+  redis_data: # Define the named volume for data persistence

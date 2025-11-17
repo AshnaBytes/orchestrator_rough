@@ -1,0 +1,24 @@
+services:
+  orchestrator:
+    build: .
+    container_name: orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+      - strategy-engine
+
+  strategy-engine:
+    build: ./microservices/strategy-engine
+    container_name: strategy-engine
+    ports:
+      - "8001:8000"   # external:internal
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"

@@ -1,0 +1,25 @@
+# Purpose: Prevents committing environment files, caches, and secrets.
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets (we will use env variables)
+.env
+*.env
+
+# Test coverage reports
+.coverage
