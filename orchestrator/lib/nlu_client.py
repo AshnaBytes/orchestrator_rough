@@ -13,7 +13,7 @@ async def call_nlu(text: str, session_id: str):
     }
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(NLU_URL, json=payload)
             resp.raise_for_status()
             return resp.json()

@@ -99,12 +99,14 @@ async def chat_endpoint(payload: ChatInput):
         mam = 150.0              # from backend later
         asking_price = 200.0     # from backend later
 
-        # simple numeric detection
+        # THURSDAY VERSION (ONLY NLU INTEGRATION)
+
         nlu = await call_nlu(payload.message, session_id=session_id)
 
         user_intent = nlu["intent"]
-        user_sentiment = nlu["sentiment"]   
-        user_offer = float(nlu["entities"]["PRICE"]) if nlu["entities"]["PRICE"] else 0.0     
+        user_sentiment = nlu["sentiment"]
+        user_offer = nlu["entities"].get("PRICE") or 0
+  
 
        
         # -------------------------------------------------
