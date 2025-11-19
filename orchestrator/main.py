@@ -4,31 +4,21 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from orchestrator.lib import state_manager
 from orchestrator.lib.backend_client import get_rules_from_backend
-from orchestrator.lib.brain_client import call_brain   # ⬅ NEW IMPORT
+from orchestrator.lib.brain_client import call_brain
 from orchestrator.lib.nlu_client import call_nlu
+from orchestrator.lib.ms5_client import call_mouth
 
 
-STRATEGY_ENGINE_URL = "http://strategy-engine:8000"
-
-
-
-# ---------------------------------------------------------
-# Logging Setup
-# ---------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("orchestrator")
 
-# ---------------------------------------------------------
-# FastAPI Init
-# ---------------------------------------------------------
 app = FastAPI(title="INA Orchestrator")
 
-# ---------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------
+
+# ---------------------- Schemas ----------------------
 class ChatInput(BaseModel):
     user_id: str
     message: str
@@ -38,9 +28,7 @@ class ChatOutput(BaseModel):
     response: str
 
 
-# ---------------------------------------------------------
-# Health Routes
-# ---------------------------------------------------------
+# ---------------------- Health ----------------------
 @app.get("/")
 async def home():
     return {"message": "Orchestrator is running!"}
@@ -65,54 +53,29 @@ async def health_check():
     return {"status": "ok" if redis_ok else "degraded"}
 
 
-# ---------------------------------------------------------
-# MAIN CHAT ENDPOINT
-# ---------------------------------------------------------
+# ---------------------- MAIN CHAT ----------------------
 @app.post("/ina/v1/chat", response_model=ChatOutput)
 async def chat_endpoint(payload: ChatInput):
-    """
-    Main chat endpoint.
-    Tuesday Requirement:
-    - Keep old backend code (NOT removed)
-    - Add Strategy Engine call
-    - Fake NLU + Fake financial rules (temporary)
-    """
 
     try:
-        # -------------------------------------------------
-        # 1️⃣ Load session from Redis
-        # -------------------------------------------------
+        # 1️⃣ Load session
         session_id = f"session:{payload.user_id}"
         session = await state_manager.get_session(session_id) or {"messages": []}
 
-        # store user message in history
         session["messages"].append({"from": "user", "text": payload.message})
-
-        # history matches StrategyInput (list of dicts)
         history = session["messages"]
 
-        # -------------------------------------------------
-        # 2️⃣ TEMPORARY VALUES (because real backend & NLU not ready yet)
-        # -------------------------------------------------
-
-        # --- Call NLU (MS2)
-        mam = 150.0              # from backend later
-        asking_price = 200.0     # from backend later
-
-        # THURSDAY VERSION (ONLY NLU INTEGRATION)
-
+        # 2️⃣ NLU (MS2)
         nlu = await call_nlu(payload.message, session_id=session_id)
-
         user_intent = nlu["intent"]
         user_sentiment = nlu["sentiment"]
         user_offer = nlu["entities"].get("PRICE") or 0
-  
 
-       
-        # -------------------------------------------------
-        # 3️⃣ CALL STRATEGY ENGINE ("THE BRAIN")
-        # -------------------------------------------------
-       
+        # Fake backend values (for now)
+        mam = 150.0
+        asking_price = 200.0
+
+        # 3️⃣ Strategy Engine (MS4)
         brain = await call_brain(
             mam=mam,
             asking_price=asking_price,
@@ -123,27 +86,22 @@ async def chat_endpoint(payload: ChatInput):
             history=history,
         )
 
-
         logger.info(f"Brain responded: {brain}")
 
-        # -------------------------------------------------
-        # 4️⃣ Format final AI response
-        # -------------------------------------------------
-        ai_response = (
-            f"Action: {brain['action']} | "
-            f"Counter: {brain.get('counter_price')} | "
-            f"Key: {brain['response_key']}"
+        # 4️⃣ Mouth (MS5)
+        ms5_resp = await call_mouth(brain)
+
+        ai_response = ms5_resp.get(
+            "response_text",
+            "[SYSTEM] Could not generate phrase."
         )
 
-        # -------------------------------------------------
-        # 5️⃣ Store AI response in session history
-        # -------------------------------------------------
+
+        # 5️⃣ Save to Redis
         session["messages"].append({"from": "ina", "text": ai_response})
         await state_manager.set_session(session_id, session)
 
-        # -------------------------------------------------
-        # 6️⃣ Return response
-        # -------------------------------------------------
+        # 6️⃣ Return final response
         return ChatOutput(response=ai_response)
 
     except Exception as e:
@@ -151,9 +109,7 @@ async def chat_endpoint(payload: ChatInput):
         raise HTTPException(status_code=500, detail="Internal server error during chat flow")
 
 
-# ---------------------------------------------------------
-# Shutdown Cleanup
-# ---------------------------------------------------------
+# ---------------------- Shutdown ----------------------
 @app.on_event("shutdown")
 async def shutdown_event():
     await state_manager.close_redis()

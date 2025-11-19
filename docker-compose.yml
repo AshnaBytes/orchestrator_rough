@@ -8,6 +8,7 @@ services:
       - redis
       - strategy-engine
       - nlu-service
+      - llm-phraser
 
   strategy-engine:
     build: ./microservices/strategy-engine
@@ -20,6 +21,14 @@ services:
     container_name: nlu-service
     ports:
       - "8002:8000"
+
+  llm-phraser:                    # <--- NEW
+    build: ./microservices/llm-phraser
+    container_name: llm-phraser
+    ports:
+      - "8003:8000" 
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}        # browser URL → http://localhost:8003/docs
 
   redis:
     image: redis:alpine
