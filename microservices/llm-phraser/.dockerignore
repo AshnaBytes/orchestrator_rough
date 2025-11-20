@@ -1,0 +1,34 @@
+# Purpose: Prevents copying unnecessary files into the Docker build context.
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE and OS files
+.idea/
+.vscode/
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Test files and configs
+tests/
+pytest.ini
+requirements-dev.txt
+*.md
+
+# Docker-specific files
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Secrets
+.env
+*.env

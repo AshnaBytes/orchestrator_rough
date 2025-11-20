@@ -1,0 +1,21 @@
+# Purpose: Defines and runs the llm-phraser service.
+# This file is for development and testing.
+
+services:
+  llm-phraser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ina-llm-phraser:latest
+    container_name: llm-phraser
+    ports:
+      - "8000:8000" # Map host port 8000 to container port 8000
+    volumes:
+      # Mount local 'app' directory for hot-reloading
+      - ./app:/service/app
+    environment:
+      # --- CRITICAL: SECRET MANAGEMENT ---
+      # This line reads your .env file and passes the key
+      # to the container.
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
