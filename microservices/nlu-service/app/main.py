@@ -13,7 +13,7 @@ class NLUInput(BaseModel):
 class NLUOutput(BaseModel):
     intent: str
     entities: dict
-    sentiment: str  # hard-coded to "neutral"
+    sentiment: str
 
 
 @app.post("/parse", response_model=NLUOutput)
@@ -35,9 +35,21 @@ async def parse(input: NLUInput):
         intent = "ask_question"
 
     # -------------------------
-    # 3️⃣ Sentiment (placeholder)
+    # 3️⃣ Sentiment Detection
     # -------------------------
-    sentiment = "neutral"
+    def detect_sentiment(text: str) -> str:
+        text = text.lower()
+        negative_words = ["high", "disappointed","expensive", "unfair", "bad", "angry", "upset", "worst", "frustrated", "annoyed"]
+        positive_words = ["good", "great", "happy", "perfect", "amazing", "love"]
+
+        if any(w in text for w in negative_words):
+            return "negative"
+        if any(w in text for w in positive_words):
+            return "positive"
+        else:
+            return "neutral"
+
+    sentiment = detect_sentiment(text)
 
     return {
         "intent": intent,

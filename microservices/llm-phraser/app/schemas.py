@@ -35,12 +35,11 @@ class PhraserInput(BaseModel):
         default=None, 
         description="The new price to offer (if action is COUNTER)."
     )
-
-     # --- Auditing & Metadata (from MS 4) ---
-
-    policy_type: Optional[str] = Field(
-    default=None,
-    description="The type of policy that made this decision."
+    
+    # --- Auditing & Metadata (from MS 4) ---
+    policy_type: str = Field(
+        ...,
+        description="The type of policy that made this decision."
     )
     
     policy_version: Optional[str] = Field(

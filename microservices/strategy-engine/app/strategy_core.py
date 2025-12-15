@@ -1,5 +1,5 @@
 # Purpose: Houses the core business logic for the negotiation strategy.
-# (Upgraded to v1.1 - Sentiment-Aware)
+# (Upgraded to v1.2.2 - Explicit Offer Counting)
 
 from .schemas import StrategyInput, StrategyOutput
 import logging
@@ -9,115 +9,119 @@ import math
 logger = logging.getLogger(__name__)
 
 # --- Policy Configuration ---
-# We've updated the logic, so we version bump
-POLICY_VERSION = "1.2.0"  # v1.1 was schema, v1.2 is this logic
-LOWBALL_THRESHOLD_PERCENT = 0.70 # 70% of MAM
-SENTIMENT_ACCEPT_THRESHOLD_PERCENT = 0.95 # 95% of MAM
+POLICY_VERSION = "1.3.3"
+
+# Thresholds
+LOWBALL_THRESHOLD_PERCENT = 0.70
+SENTIMENT_ACCEPT_THRESHOLD_PERCENT = 0.95 
+
+# New: Offer Count Threshold
+# We trigger "Final Offer" logic if the user has made at least this many offers
+# (including the current one).
+USER_OFFER_THRESHOLD = 4 
+
+# --- NEW CONCESSION FACTORS (Tougher Logic) ---
+# Standard: Only drop 25% of the gap (was 50%)
+STANDARD_CONCESSION_FACTOR = 0.25 
+
+# Final: Meet halfway (was 75%)
+FINAL_CONCESSION_FACTOR = 0.50 
+# ----------------------------------------------
+
+def get_last_bot_offer(input_data: StrategyInput) -> float:
+    """
+    Helper function to find the most recent price offered by the Bot.
+    """
+    for turn in reversed(input_data.history):
+        role = turn.get("role", "").lower()
+        if role == "assistant" or role == "bot":
+            if "counter_price" in turn and turn["counter_price"] is not None:
+                return float(turn["counter_price"])
+            if "offer" in turn and turn["offer"] is not None:
+                return float(turn["offer"])
+    return input_data.asking_price
+
+def count_user_offers(history: list) -> int:
+    """
+    Counts how many times the user has made a move in the history.
+    """
+    count = 0
+    for turn in history:
+        if turn.get("role", "").lower() == "user":
+            count += 1
+    return count
 
 def make_decision(input_data: StrategyInput) -> StrategyOutput:
-    """
-    Applies the negotiation strategy (v1.2) to decide the next action.
-    Now includes sentiment-based "panic" rule.
-    """
     
     logger.info(f"Processing decision for session: {input_data.session_id}")
-    logger.info(f"Received sentiment: {input_data.user_sentiment}, intent: {input_data.user_intent}")
 
-    # --- NEW: Rule 1 (High Priority): Sentiment-Based Accept ---
-    # Logic: if input.user_offer >= (input.mam * 0.95) and input.sentiment == 'negative'
-    # This rule saves a sale if the user is frustrated and their offer is "close enough".
-    
+    # =================================================================
+    # RULE 1 & 2 (Accept Rules) - UNCHANGED
+    # =================================================================
     sentiment_accept_threshold = input_data.mam * SENTIMENT_ACCEPT_THRESHOLD_PERCENT
-    
     if (input_data.user_sentiment == 'negative' and 
         input_data.user_offer >= sentiment_accept_threshold):
-        
-        logger.warning(
-            f"ACCEPT (Sentiment Rule): User offer ({input_data.user_offer}) "
-            f">= panic threshold ({sentiment_accept_threshold}) "
-            f"and sentiment is '{input_data.user_sentiment}'."
-        )
-        
-        return StrategyOutput(
-            action="ACCEPT",
-            response_key="ACCEPT_SENTIMENT_CLOSE", # A new key for MS 5
-            counter_price=input_data.user_offer,
-            policy_type="rule-based",
-            policy_version=POLICY_VERSION,
-            decision_metadata={
-                "rule": "sentiment_accept_on_negative",
-                "mam": input_data.mam,
-                "user_offer": input_data.user_offer,
-                "sentiment": input_data.user_sentiment,
-                "threshold_percent": SENTIMENT_ACCEPT_THRESHOLD_PERCENT,
-                "threshold_value": sentiment_accept_threshold
-            }
-        )
+        return StrategyOutput(action="ACCEPT", response_key="ACCEPT_SENTIMENT_CLOSE", counter_price=input_data.user_offer, policy_type="rule-based", policy_version=POLICY_VERSION, decision_metadata={"rule": "sentiment_accept"})
 
-    # --- Rule 2: The Unbreakable Rule (Standard Accept) ---
-    # This rule only runs if the sentiment rule *fails*.
     if input_data.user_offer >= input_data.mam:
-        logger.warning(f"ACCEPT (Standard): User offer ({input_data.user_offer}) >= MAM.")
-        
-        return StrategyOutput(
-            action="ACCEPT",
-            response_key="ACCEPT_FINAL",
-            counter_price=input_data.user_offer,
-            policy_type="rule-based",
-            policy_version=POLICY_VERSION,
-            decision_metadata={
-                "rule": "user_offer_gte_mam",
-                "mam": input_data.mam,
-                "user_offer": input_data.user_offer
-            }
-        )
+        return StrategyOutput(action="ACCEPT", response_key="ACCEPT_FINAL", counter_price=input_data.user_offer, policy_type="rule-based", policy_version=POLICY_VERSION, decision_metadata={"rule": "standard_accept"})
     
-    # --- Rule 3: Lowball REJECT Logic ---
-    # Logic: if input.user_offer < (input.mam * 0.7)
-    
+    # =================================================================
+    # RULE 3: Lowball REJECT Logic - UNCHANGED
+    # =================================================================
     lowball_threshold = input_data.mam * LOWBALL_THRESHOLD_PERCENT
-    
     if input_data.user_offer < lowball_threshold:
-        logger.info(f"REJECT (LOWBALL): User offer ({input_data.user_offer}) < threshold ({lowball_threshold}).")
-        
-        return StrategyOutput(
-            action="REJECT",
-            response_key="REJECT_LOWBALL",
-            counter_price=None,
-            policy_type="rule-based",
-            policy_version=POLICY_VERSION,
-            decision_metadata={
-                "rule": "user_offer_lt_lowball_threshold",
-                "mam": input_data.mam,
-                "user_offer": input_data.user_offer,
-                "threshold_percent": LOWBALL_THRESHOLD_PERCENT,
-                "threshold_value": lowball_threshold
-            }
-        )
+        return StrategyOutput(action="REJECT", response_key="REJECT_LOWBALL", counter_price=None, policy_type="rule-based", policy_version=POLICY_VERSION, decision_metadata={"rule": "lowball_reject"})
 
-    # --- Rule 4: Standard COUNTER-OFFER Logic ---
-    # This is the 'else' case: offer is < MAM, but > lowball, and user isn't 'negative'.
+    # =================================================================
+    # RULE 4: Counter-Offer Logic (Offer-Count Aware)
+    # =================================================================
     
-    counter_offer = math.ceil((input_data.asking_price + input_data.user_offer) / 2)
+    # 1. Determine our current standing
+    current_bot_price = get_last_bot_offer(input_data)
     
-    # Counter-offer Sanity Check
-    if counter_offer < input_data.mam:
-        logger.warning(f"Counter ({counter_offer}) was < MAM. Adjusting to MAM.")
-        counter_offer = input_data.mam 
-        
-    logger.info(f"COUNTER: User offer ({input_data.user_offer}). Countering with {counter_offer}.")
+    # 2. Count Offers
+    # We count history offers + 1 (the current offer being processed)
+    past_user_offers = count_user_offers(input_data.history)
+    total_user_offers = past_user_offers + 1
+    
+    logger.info(f"User Offer Count: {total_user_offers} (Threshold: {USER_OFFER_THRESHOLD})")
+
+    # 3. Decide Strategy based on Count
+    if total_user_offers > USER_OFFER_THRESHOLD:
+        # --- FINAL ROUND STRATEGY ---
+        concession_factor = FINAL_CONCESSION_FACTOR
+        response_key = "COUNTER_FINAL_OFFER"
+        logger.info("Offer Threshold reached. Triggering Final Offer.")
+    else:
+        # --- STANDARD STRATEGY ---
+        concession_factor = STANDARD_CONCESSION_FACTOR
+        response_key = "STANDARD_COUNTER"
+
+    # 4. Calculate Concession
+    gap = current_bot_price - input_data.user_offer
+    drop_amount = gap * concession_factor
+    midpoint = current_bot_price - drop_amount
+    
+    # 5. Safety Floor (Max)
+    final_counter = max(input_data.mam, midpoint)
+    final_counter = math.ceil(final_counter)
+    
+    # 6. Ratchet Check
+    if final_counter > current_bot_price:
+        final_counter = current_bot_price
 
     return StrategyOutput(
         action="COUNTER",
-        response_key="STANDARD_COUNTER",
-        counter_price=counter_offer,
+        response_key=response_key,
+        counter_price=final_counter,
         policy_type="rule-based",
         policy_version=POLICY_VERSION,
         decision_metadata={
-            "rule": "standard_counter_midpoint",
+            "rule": "offer_count_aware_counter",
             "mam": input_data.mam,
-            "user_offer": input_data.user_offer,
-            "asking_price": input_data.asking_price,
-            "calculated_counter": counter_offer
+            "offer_number": total_user_offers,
+            "is_final_round": total_user_offers >= USER_OFFER_THRESHOLD,
+            "final_counter": final_counter
         }
     )

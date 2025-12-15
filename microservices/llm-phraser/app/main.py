@@ -2,16 +2,17 @@
 
 from fastapi import FastAPI, HTTPException, Depends
 from .schemas import PhraserInput, PhraserOutput
+from dotenv import load_dotenv
+
+# --- Load environment variables from .env file ---
+load_dotenv()
+
 from .llm_client import generate_llm_response  # <-- IMPORT THE NEW FUNCTION
 
 import os
 import logging
 from groq import AsyncGroq
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
-
-# --- Load environment variables from .env file ---
-load_dotenv()
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
