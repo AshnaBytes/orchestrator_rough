@@ -29,7 +29,7 @@ async def call_brain(mam, asking_price, user_offer, user_intent, user_sentiment,
         "history": history
     }
 
-    logger.info(f"[MS4] Sending payload → Brain: {payload}")
+    logger.info(f"[MS4] Sending to Brain: session={session_id}, intent={mapped_intent}, offer={user_offer}")
 
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
