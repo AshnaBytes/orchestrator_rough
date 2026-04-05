@@ -37,7 +37,7 @@ async def brain_node(state: AgentState):
     try:
         brain = await call_brain(
             mam=state["mam"],
-            asking_price=state.get("asking_price", 200.0),
+            asking_price=state["asking_price"],
             user_offer=state.get("user_offer", 0),
             user_intent=state.get("intent", "unknown"),
             user_sentiment=state.get("sentiment", "neutral"),
@@ -49,7 +49,7 @@ async def brain_node(state: AgentState):
         # Safe fallback if Brain fails
         brain = {
             "action": "COUNTER",
-            "counter_price": state.get("asking_price", 200.0),
+            "counter_price": state["asking_price"],
             "response_key": "SAFE_FALLBACK",
             # 🔥 REQUIRED BY MS5 SCHEMA
             "policy_type": "rule-based",

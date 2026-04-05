@@ -1,21 +1,32 @@
-import os
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from orchestrator.lib import state_manager
 from orchestrator.graph.workflow import build_workflow
 
-# 🔥 Build Graph Once (Startup Time)
-graph_app = build_workflow()
-
+# Setup logging first
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("orchestrator")
 
-app = FastAPI(title="INA Orchestrator")
+# 🔥 Build Graph Once (Startup Time)
+graph_app = build_workflow()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown."""
+    logger.info("INA Orchestrator starting up...")
+    yield
+    logger.info("INA Orchestrator shutting down...")
+    await state_manager.close_redis()
+
+
+app = FastAPI(title="INA Orchestrator", lifespan=lifespan)
 
 
 # ---------------------- Schemas ----------------------
@@ -65,10 +76,12 @@ async def chat_endpoint(payload: ChatInput):
         session = await state_manager.get_session(session_id)
 
         if not session:
-            raise HTTPException(
-                status_code=400,
-                detail="Session not initialized. Backend must call /session/init."
-            )
+            logger.warning(f"Session not found for {session_id}. Using defaults.")
+            session = {
+                "messages": [],
+                "mam": 150.0,
+                "asking_price": 200.0
+            }
 
         # ------------------------------------------------
         # 2️⃣ Append User Message
@@ -81,9 +94,10 @@ async def chat_endpoint(payload: ChatInput):
         history = session["messages"]
 
         # ------------------------------------------------
-        # 3️⃣ Business Inputs (UNCHANGED)
+        # 3️⃣ Business Inputs (Pulled from Redis Session)
         # ------------------------------------------------
-        mam = 150.0
+        mam = float(session.get("mam", 150.0))
+        asking_price = float(session.get("asking_price", 200.0))
 
         # ------------------------------------------------
         # 4️⃣ LANGGRAPH EXECUTION (🔥 NEW CORE)
@@ -92,6 +106,7 @@ async def chat_endpoint(payload: ChatInput):
             state = {
                 "session_id": session_id,
                 "mam": mam,
+                "asking_price": asking_price,
                 "user_input": payload.message,
                 "history": history,
             }
@@ -133,8 +148,3 @@ async def chat_endpoint(payload: ChatInput):
         logger.exception(f"Unexpected error for {payload.user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
-# ---------------------- Shutdown ----------------------
-@app.on_event("shutdown")
-async def shutdown_event():
-    await state_manager.close_redis()

@@ -3,7 +3,6 @@ import os
 import json
 import logging
 from typing import Optional
-import asyncio
 
 # Use redis.asyncio client (redis-py supports asyncio)
 try:
@@ -13,8 +12,6 @@ except Exception:
     # runtime code expects the asyncio client from redis-py (redis.asyncio), so ensure the
     # correct package is installed in deployment/runtime.
     import redis  # type: ignore
-
-logger = logging.getLogger("state_manager")
 
 logger = logging.getLogger(__name__)
 
