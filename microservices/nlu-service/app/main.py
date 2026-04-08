@@ -37,16 +37,7 @@ async def verify_internal_key(request: Request, call_next):
     return await call_next(request)
 
 
-# ---------------------- Schemas ----------------------
-class NLUInput(BaseModel):
-    text: str
-    session_id: str
-
-
-class NLUOutput(BaseModel):
-    intent: str
-    entities: dict
-    sentiment: str
+from .schemas import NLUInput, NLUOutput
 
 
 # ---------------------- Health ----------------------

@@ -1,7 +1,10 @@
 from orchestrator.graph.state import AgentState
 from orchestrator.lib.nlu_client import call_nlu
 from orchestrator.lib.brain_client import call_brain
-from orchestrator.lib.ms5_client import call_mouth
+from orchestrator.lib.phraser_client import call_phraser
+import logging
+
+logger = logging.getLogger("orchestrator_nodes")
 
 
 # ---------- NLU NODE ----------
@@ -25,7 +28,7 @@ async def nlu_node(state: AgentState):
     state["sentiment"] = nlu.get("sentiment", "neutral")
     state["user_offer"] = nlu.get("entities", {}).get("PRICE", 0)
 
-    print("NLU RAW:", nlu)
+    logger.info("NLU RAW: %s", nlu)
 
 
     return state
@@ -70,7 +73,7 @@ async def brain_node(state: AgentState):
 
     # ⭐ RAW brain output for Mouth
     state["_brain_raw"] = brain
-    print("BRAIN RAW:", brain)
+    logger.info("BRAIN RAW: %s", brain)
 
 
     return state
@@ -86,9 +89,9 @@ async def mouth_node(state: AgentState):
         return state
 
     try:
-        ms5 = await call_mouth(brain)
+        ms5 = await call_phraser(brain)
 
-        print("MS5 RAW RESPONSE:", ms5)
+        logger.info("PHRASER RAW RESPONSE: %s", ms5)
 
         # ⭐ UNIVERSAL EXTRACTION
         response_text = (

@@ -2,7 +2,10 @@
 # (Upgraded to v1.2 - Full Contextual Support)
 
 from .schemas import PhraserInput
+import logging
 from typing import Tuple
+
+logger = logging.getLogger(__name__)
 import random
 
 # --- System Persona (Paraphrasing Assistant) ---
@@ -113,7 +116,7 @@ def get_formatted_prompt(input_data: PhraserInput) -> Tuple[str, str]:
             price_str = f"${price:,.0f}" if price is not None else ""
             formatted_prompt = selected_template.format(price=price_str)
     except Exception as e:
-        print(f"Error formatting prompt: {e}")
+        logger.exception("Error formatting prompt: %s", e)
         formatted_prompt = "Template: I'm not sure how to respond."
 
     return SYSTEM_PROMPT, formatted_prompt

@@ -168,13 +168,7 @@ def make_decision(input_data: StrategyInput) -> StrategyOutput:
     final_counter = min(current_bot_price, max(input_data.mam, midpoint))
     final_counter = math.ceil(final_counter)
     
-    # 5. Safety Floor (Max)
- #   final_counter = max(input_data.mam, midpoint)
- #   final_counter = math.ceil(final_counter)
-    
-    # 6. Ratchet Check
- #   if final_counter > current_bot_price:
- #       final_counter = current_bot_price
+
 
     return StrategyOutput(
         action="COUNTER",

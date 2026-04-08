@@ -13,7 +13,7 @@ from tenacity import (
 from orchestrator.lib.http_pool import get_http_client
 from orchestrator.lib.circuit_breaker import CircuitBreaker, CircuitOpenError
 
-logger = logging.getLogger("ms5_client")
+logger = logging.getLogger("phraser_client")
 
 LLM_PHRASER_URL = os.getenv("LLM_PHRASER_URL", "http://llm-phraser:8000")
 
@@ -31,7 +31,7 @@ _FALLBACK = {"response_text": "Let me think about that for a moment."}
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
-async def _call_mouth_with_retry(payload: dict) -> dict:
+async def _call_phraser_with_retry(payload: dict) -> dict:
     """Raw HTTP call to LLM Phraser with retry logic."""
     client = get_http_client()
     resp = await client.post(f"{LLM_PHRASER_URL}/phrase", json=payload)
@@ -39,7 +39,7 @@ async def _call_mouth_with_retry(payload: dict) -> dict:
     return resp.json()
 
 
-async def call_mouth(brain_output: dict) -> dict:
+async def call_phraser(brain_output: dict) -> dict:
     """
     Call the LLM Phraser with:
     - Connection pooling (shared httpx client)
@@ -47,7 +47,7 @@ async def call_mouth(brain_output: dict) -> dict:
     - Circuit breaker (stops calling after 5 consecutive failures)
     - Safe fallback on any failure
     """
-    ms5_payload = {
+    phraser_payload = {
         "action": brain_output.get("action"),
         "response_key": brain_output.get("response_key"),
         "counter_price": brain_output.get("counter_price") or 0,
@@ -56,11 +56,11 @@ async def call_mouth(brain_output: dict) -> dict:
         "decision_metadata": brain_output.get("decision_metadata", {}),
     }
 
-    logger.info(f"[MS5] Sending payload → Mouth: {ms5_payload}")
+    logger.info(f"[Phraser] Sending payload: {phraser_payload}")
 
     try:
-        data = await _breaker.call(_call_mouth_with_retry, ms5_payload)
-        logger.info(f"[MS5] RAW RESPONSE ← {data}")
+        data = await _breaker.call(_call_phraser_with_retry, phraser_payload)
+        logger.info(f"[Phraser] RAW RESPONSE ← {data}")
         return data
 
     except CircuitOpenError:
@@ -68,5 +68,5 @@ async def call_mouth(brain_output: dict) -> dict:
         return _FALLBACK
 
     except Exception as e:
-        logger.exception(f"MS5 failed after retries: {e}")
+        logger.exception(f"Phraser failed after retries: {e}")
         return _FALLBACK
