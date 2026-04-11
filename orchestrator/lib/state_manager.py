@@ -2,6 +2,9 @@
 import os
 import json
 import logging
+import asyncio
+from uuid import uuid4
+from contextlib import asynccontextmanager
 from typing import Optional
 
 # Use redis.asyncio client (redis-py supports asyncio)
@@ -88,57 +91,63 @@ async def ping_redis() -> bool:
 # optional: a graceful close helper (useful on app shutdown)
 async def close_redis():
     global _redis_client
-    if _redis_client is None:
-        return
+    if _redis_client is not None:
+        try:
+            await _redis_client.close()
+            await _redis_client.connection_pool.disconnect()
+        except Exception:
+            pass
+        _redis_client = None
+
+
+async def _release_lock(lock_key: str, token: str) -> None:
+    """
+    Release lock only if token matches (safe unlock).
+    """
+    client = get_redis_client()
+    release_script = """
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+        return redis.call("DEL", KEYS[1])
+    else
+        return 0
+    end
+    """
     try:
-        await _redis_client.close()
-        await _redis_client.connection_pool.disconnect()
-    except Exception:
-        pass
-    _redis_client = None
-
-
-# -------------------------------------------------------
-# 🔒 Distributed Lock (Race Condition Fix — Issue 5.2)
-# -------------------------------------------------------
-# Uses Redis SET NX PX pattern — the simplest, dependency-free
-# distributed lock that works with any Redis version.
-#
-# How it works:
-#   1. Before touching a session, acquire lock: SET lock:<key> <token> NX PX <ttl>
-#   2. NX = only succeeds if key does NOT exist (atomic, no race)
-#   3. On release: only delete the lock if the token matches (prevents
-#      another request from releasing a lock it doesn't own)
-#
-# Max Lock TTL: 10 seconds — if the process crashes while holding
-# the lock, Redis auto-expires it so other requests don't starve.
-
-from contextlib import asynccontextmanager
-import uuid
-
-LOCK_TTL_MS = int(os.getenv("SESSION_LOCK_TTL_MS", 10_000))  # 10 seconds
+        await client.eval(release_script, 1, lock_key, token)
+    except Exception as exc:
+        logger.warning("Failed to release lock %s: %s", lock_key, exc)
 
 
 @asynccontextmanager
-async def session_lock(session_id: str):
+async def session_lock(
+    session_id: str,
+    acquire_timeout: float = 3.0,
+    lock_ttl: int = 10,
+):
     """
-    Async context manager that acquires a per-session distributed lock.
+    Redis distributed lock per session to prevent concurrent lost updates.
 
-    Usage:
-        async with session_lock(redis_key):
-            # safe to read-modify-write the session here
-
-    Raises HTTPException 429 if the lock cannot be acquired (another
-    request is already processing this session).
+    - acquire_timeout: max seconds to wait for lock.
+    - lock_ttl: lock expiry to avoid deadlocks if process crashes.
     """
     from fastapi import HTTPException  # local import to avoid circular dep
 
     client = get_redis_client()
     lock_key = f"lock:{session_id}"
-    lock_token = str(uuid.uuid4())  # unique token to identify this lock holder
+    token = str(uuid4())
+    deadline = asyncio.get_event_loop().time() + acquire_timeout
+    acquired = False
 
-    # Acquire lock atomically — SET lock_key token NX PX ttl
-    acquired = await client.set(lock_key, lock_token, nx=True, px=LOCK_TTL_MS)
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            acquired = bool(await client.set(lock_key, token, nx=True, ex=lock_ttl))
+        except Exception as exc:
+            logger.exception("Error acquiring lock %s: %s", lock_key, exc)
+            acquired = False
+
+        if acquired:
+            break
+        await asyncio.sleep(0.05)
 
     if not acquired:
         logger.warning("Could not acquire lock for session %s — concurrent request in progress", session_id)
@@ -147,17 +156,7 @@ async def session_lock(session_id: str):
             detail="Another request is already being processed for this session. Please retry in a moment.",
         )
 
-    logger.debug("Lock acquired for session %s", session_id)
     try:
-        yield  # caller does their work here
+        yield
     finally:
-        # Release lock only if we still own it (token check)
-        current_token = await client.get(lock_key)
-        if current_token == lock_token:
-            await client.delete(lock_key)
-            logger.debug("Lock released for session %s", session_id)
-        else:
-            logger.warning(
-                "Lock for session %s expired or was taken by another process during request", session_id
-            )
-
+        await _release_lock(lock_key, token)

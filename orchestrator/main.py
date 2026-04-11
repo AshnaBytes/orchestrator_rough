@@ -197,7 +197,7 @@ async def health_check():
 async def chat_endpoint(
     request: Request,
     payload: ChatInput,
-    session: SessionData = Depends(validate_session),
+    _validated_session: SessionData = Depends(validate_session),
 ):
     """
     Main chat endpoint.
@@ -210,28 +210,31 @@ async def chat_endpoint(
         redis_key = f"session:{payload.session_id}"
 
         # ------------------------------------------------
-        # 🔒 Acquire distributed lock (Race Condition Fix 5.2)
+        # ------------------------------------------------
+        # 🔒 Acquire distributed lock (Race Condition Fix)
         # Ensures only one request processes a session at a time.
         # ------------------------------------------------
-        async with session_lock(redis_key):
+        async with state_manager.session_lock(redis_key):
+            # Re-read inside lock so we always work on the latest state.
+            latest_raw = await state_manager.get_session(redis_key)
+            if latest_raw is None:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Unauthorized: Invalid or expired session ID.",
+                )
 
-            # --------------------------------------------
-            # 1️⃣ Read business inputs from validated session
-            # --------------------------------------------
-            mam = session.mam
-            asking_price = session.asking_price
+            latest_session = SessionData(**latest_raw)
+            mam = latest_session.mam
+            asking_price = latest_session.asking_price
 
-            # --------------------------------------------
-            # 2️⃣ Append user message to history
-            # --------------------------------------------
-            history = list(session.messages)
+            history = list(latest_session.messages)
             history.append({
                 "from": "user",
                 "text": payload.message,
             })
 
             # --------------------------------------------
-            # 3️⃣ LangGraph Execution
+            # LangGraph Execution
             # --------------------------------------------
             try:
                 state = {
@@ -261,7 +264,7 @@ async def chat_endpoint(
                 brain_key = "GRAPH_FAIL"
 
             # --------------------------------------------
-            # 4️⃣ Save updated history back to Redis
+            # Save updated history back to Redis
             # --------------------------------------------
             history.append({
                 "from": "ina",
@@ -270,7 +273,7 @@ async def chat_endpoint(
                 "brain_key": brain_key,
             })
 
-            updated_session = session.model_dump()
+            updated_session = latest_session.model_dump()
             updated_session["messages"] = history
             await state_manager.set_session(redis_key, updated_session)
 
@@ -278,6 +281,15 @@ async def chat_endpoint(
 
     except HTTPException:
         raise
+
+    except TimeoutError:
+        logger.warning(
+            "Session lock timeout for session_id=%s", payload.session_id
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="Another request is already processing this session. Please retry.",
+        )
 
     except Exception as e:
         logger.exception(
