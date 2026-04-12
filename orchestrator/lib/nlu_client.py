@@ -15,7 +15,7 @@ from orchestrator.lib.circuit_breaker import CircuitBreaker, CircuitOpenError
 
 logger = logging.getLogger("nlu_client")
 
-NLU_URL = os.getenv("NLU_SERVICE_URL", "http://nlu-service:8000")
+NLU_URL = os.getenv("NLU_URL", "http://nlu-service:8000")
 
 # Circuit breaker: opens after 5 failures, recovers after 30s
 _breaker = CircuitBreaker("nlu-service", failure_threshold=5, recovery_timeout=30)

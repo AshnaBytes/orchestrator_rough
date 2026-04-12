@@ -26,6 +26,9 @@ services:
     environment:
       - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - STRATEGY_ENGINE_URL=${STRATEGY_ENGINE_URL:-http://strategy-engine:8000}
+      - LLM_PHRASER_URL=${LLM_PHRASER_URL:-http://llm-phraser:8000}
+      - NLU_URL=${NLU_URL:-http://nlu-service:8000}
     depends_on:
       redis:
         condition: service_healthy
