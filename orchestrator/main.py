@@ -133,7 +133,7 @@ async def validate_session(payload: ChatInput) -> SessionData:
         3. Agar session structure corrupt hai → 401 Unauthorized (invalid data).
         4. Valid session return karo as a Pydantic SessionData object.
     """
-    redis_key = f"session:{payload.session_id}"
+    redis_key = payload.session_id
 
     # 1. Fetch session from Redis
     raw_session = await state_manager.get_session(redis_key)
@@ -207,7 +207,7 @@ async def chat_endpoint(
     """
 
     try:
-        redis_key = f"session:{payload.session_id}"
+        redis_key = payload.session_id
 
         # ------------------------------------------------
         # ------------------------------------------------
