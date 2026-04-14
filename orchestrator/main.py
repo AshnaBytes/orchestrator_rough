@@ -112,7 +112,7 @@ app.add_middleware(
 
 # ---------------------- Schemas ----------------------
 class ChatInput(BaseModel):
-    session_id: str
+    user_id: str
     message: str
 
 
@@ -133,14 +133,14 @@ async def validate_session(payload: ChatInput) -> SessionData:
         3. Agar session structure corrupt hai → 401 Unauthorized (invalid data).
         4. Valid session return karo as a Pydantic SessionData object.
     """
-    redis_key = payload.session_id
+    redis_key = payload.user_id
 
     # 1. Fetch session from Redis
     raw_session = await state_manager.get_session(redis_key)
 
     if raw_session is None:
         logger.warning(
-            "Auth failed: session not found — session_id=%s", payload.session_id
+            "Auth failed: session not found — user_id=%s", payload.user_id
         )
         raise HTTPException(
             status_code=401,
@@ -152,8 +152,8 @@ async def validate_session(payload: ChatInput) -> SessionData:
         session = SessionData(**raw_session)
     except ValidationError as e:
         logger.warning(
-            "Auth failed: corrupt session data — session_id=%s errors=%s",
-            payload.session_id,
+            "Auth failed: corrupt session data — user_id=%s errors=%s",
+            payload.user_id,
             e.errors(),
         )
         raise HTTPException(
@@ -207,7 +207,7 @@ async def chat_endpoint(
     """
 
     try:
-        redis_key = payload.session_id
+        redis_key = payload.user_id
 
         # ------------------------------------------------
         # ------------------------------------------------
@@ -292,7 +292,7 @@ async def chat_endpoint(
 
     except TimeoutError:
         logger.warning(
-            "Session lock timeout for session_id=%s", payload.session_id
+            "Session lock timeout for user_id=%s", payload.user_id
         )
         raise HTTPException(
             status_code=409,
@@ -301,6 +301,6 @@ async def chat_endpoint(
 
     except Exception as e:
         logger.exception(
-            "Unexpected error for session %s: %s", payload.session_id, e
+            "Unexpected error for session %s: %s", payload.user_id, e
         )
         raise HTTPException(status_code=500, detail="Internal server error")
