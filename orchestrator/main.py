@@ -165,7 +165,7 @@ async def validate_session(payload: ChatInput) -> SessionData:
 
 
 # ---------------------- Health (no rate limit) ----------------------
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def home():
     return {"message": "Orchestrator is running!"}
 
