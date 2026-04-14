@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
-RUN pip install --no-cache-dir fastapi uvicorn httpx redis langgraph langchain-core
+RUN pip install --no-cache-dir fastapi uvicorn httpx redis langgraph langchain-core slowapi
 
 # 🔥 IMPORTANT: copy whole project (not just orchestrator)
 COPY . .
