@@ -44,6 +44,7 @@ class StrategyInput(BaseModel):
         "ASK_QUESTION",
         "ASK_PREVIOUS_OFFER",
         "UNKNOWN",
+        "INVALID",
     ] = Field(
         ...,
         description="The user's detected intent — must be an exact NLU output value."

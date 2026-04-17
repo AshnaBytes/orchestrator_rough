@@ -58,6 +58,12 @@ TEMPLATES = {
         "Template: I'm here exclusively for price bargaining. Please make an offer or ask me about the price, as I am not equipped to answer other questions."
     ],
 
+    "OFFER_ABOVE_ASKING": [
+        "Template: That's very generous! However, our listed asking price is {price} — we wouldn't want you to overpay. Would you like to offer at or below that?",
+        "Template: I appreciate it, but you've actually offered more than our asking price of {price}. You don't need to pay that much! Feel free to negotiate below {price}.",
+        "Template: Wow, thank you! But our asking price is only {price} — we can't take more than that. Make an offer at or below {price} and we can talk!",
+    ],
+
     # 1. Standard Acceptance
     "ACCEPT_FINAL": [
         "Template: We can accept {price}. It's a deal.",

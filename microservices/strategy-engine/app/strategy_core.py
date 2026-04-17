@@ -69,6 +69,21 @@ def make_decision(input_data: StrategyInput) -> StrategyOutput:
             if "offer" in turn and turn["offer"] is not None:
                 last_user_offer = turn["offer"]
 
+    # =================================================================
+    # RULE 0: Over-Asking-Price Guard
+    # If the user offers MORE than the asking price, politely inform
+    # them and redirect. We do not want to take more than listed.
+    # =================================================================
+    if input_data.user_intent == "MAKE_OFFER" and input_data.user_offer > input_data.asking_price:
+        return StrategyOutput(
+            action="REJECT",
+            response_key="OFFER_ABOVE_ASKING",
+            counter_price=input_data.asking_price,
+            policy_type="rule-based",
+            policy_version=POLICY_VERSION,
+            decision_metadata={"asking_price": input_data.asking_price}
+        )
+
     # Handle GREET
     if input_data.user_intent == "GREET":
         return StrategyOutput(
