@@ -145,7 +145,7 @@ async def parse(input: NLUInput):
 
     if not text:
         hint = "empty_input"
-    elif re.search(r'\d+\s*[\+\-\*/]\s*\d+', text) or re.search(r'\b[a-z]\s*=\s*\d', text, re.IGNORECASE):
+    elif re.search(r'\d+\s*[\+\-\*/]\s*\d+', text) or re.search(r'\b(divide|divided by|plus|minus|times|multiplied by|fraction)\b', text, re.IGNORECASE) or re.search(r'\b[a-z]\s*=\s*\d', text, re.IGNORECASE):
         hint = "math_expression_detected"
     elif re.search(r'-\s*\$?\s*\d+', text):
         hint = "negative_number_detected"
@@ -163,6 +163,14 @@ async def parse(input: NLUInput):
     if chain is not None:
         try:
             result = await llm_nlu.parse(input.text, chain, hint=hint)
+            # --- CAVE-MAN ULTRA: Layer 1 override ---
+            # If our fast pre-check found an issue, we FORCE the intent to INVALID.
+            # This prevents the LLM from "being too smart" and trying to process math.
+            if hint:
+                logger.warning("[NLU Layer 1 Override] Hint was present (%s). Forcing INVALID.", hint)
+                result["intent"] = "INVALID"
+                if not result.get("error_message"):
+                    result["error_message"] = "I'm sorry, I couldn't process that input. Please provide a clear price."
         except Exception as e:
             logger.warning("[NLU] LLM parse failed — using regex fallback. Error: %s", e)
             result = _regex_fallback(input.text)
@@ -172,7 +180,7 @@ async def parse(input: NLUInput):
 
     return NLUOutput(
         intent=result["intent"],
-        entities={"PRICE": result["price"]},
+        entities={"PRICE": result["price"] if result["intent"] != "INVALID" else None},
         sentiment=result["sentiment"],
         language=result.get("language", "english"),
         error_message=result.get("error_message"),
