@@ -34,11 +34,23 @@ FINAL_OFFER_THRESHOLD = 5
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+def _get_role(turn: dict) -> str:
+    """
+    Normalize the speaker field.
+    Orchestrator writes:  {"from": "user"}  / {"from": "ina"}
+    Older turns may use: {"role": "user"}  / {"role": "assistant" | "bot"}
+    Returns a lowercase canonical role: 'user', 'bot', or ''.
+    """
+    raw = turn.get("role") or turn.get("from") or ""
+    raw = raw.lower()
+    if raw in ("assistant", "ina", "bot"):
+        return "bot"
+    return raw  # 'user' or ''
+
 def get_last_bot_offer(input_data: StrategyInput) -> float:
     for turn in reversed(input_data.history):
-        role = turn.get("role", "").lower()
-        if role in ("assistant", "bot"):
-            for key in ("counter_price", "offer"):
+        if _get_role(turn) == "bot":
+            for key in ("bot_offer", "counter_price", "offer"):
                 if turn.get(key) is not None:
                     return float(turn[key])
     return input_data.asking_price
@@ -54,15 +66,16 @@ def get_concession_factor(offer_number: int) -> float:
 
 
 def count_user_offers(history: list) -> int:
-    return sum(1 for t in history if t.get("role", "").lower() == "user")
+    return sum(1 for t in history if _get_role(t) == "user")
 
 
 def get_user_offer_history(history: list) -> list[float]:
     """Returns all user offer prices in chronological order."""
     return [
-        float(t["offer"])
+        float(t.get("user_offer") or t.get("offer"))
         for t in history
-        if t.get("role", "").lower() == "user" and t.get("offer") is not None
+        if _get_role(t) == "user"
+        and (t.get("user_offer") is not None or t.get("offer") is not None)
     ]
 
 
@@ -101,11 +114,11 @@ def make_decision(input_data: StrategyInput) -> StrategyOutput:
     last_user_offer = None
     last_bot_offer = None
     for turn in reversed(input_data.history):
-        role = turn.get("role", "").lower()
-        if not last_bot_offer and role in ("bot", "assistant"):
-            last_bot_offer = turn.get("counter_price") or turn.get("offer")
+        role = _get_role(turn)
+        if not last_bot_offer and role == "bot":
+            last_bot_offer = turn.get("bot_offer") or turn.get("counter_price") or turn.get("offer")
         if not last_user_offer and role == "user":
-            last_user_offer = turn.get("offer")
+            last_user_offer = turn.get("user_offer") or turn.get("offer")
 
     # ── Non-offer intents ─────────────────────────────────────────────────────
     if input_data.user_intent == "GREET":

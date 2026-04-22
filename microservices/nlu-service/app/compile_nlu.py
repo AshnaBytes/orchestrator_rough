@@ -62,6 +62,16 @@ RAW_EXAMPLES = [
         "sentiment": "positive", "language": "roman_urdu", "error_message": "None",
     },
     {
+        "user_message": "I can offer 45000 dollars",
+        "intent": "MAKE_OFFER", "price": "45000.0",
+        "sentiment": "neutral", "language": "english", "error_message": "None",
+    },
+    {
+        "user_message": "Bhai 60k krlo",
+        "intent": "MAKE_OFFER", "price": "60000.0",
+        "sentiment": "neutral", "language": "roman_urdu", "error_message": "None",
+    },
+    {
         "user_message": "Bhai 2000 thora zayada hai, 1700?",
         "intent": "MAKE_OFFER", "price": "1700.0",
         "sentiment": "negative", "language": "roman_urdu", "error_message": "None",
@@ -227,7 +237,7 @@ def compile_nlu(openai_api_key: str, groq_api_key: str):
     # 16 train / 4 validation split -> Now 18 train / 4 validation
     # Validation set is hand-picked to cover key variation axes:
     #   roman_urdu MAKE_OFFER, INVALID, DEAL, ASK_PREVIOUS_OFFER, PROMPT_INJECTION
-    val_indices = {3, 7, 15, 18, 20}   # indices into RAW_EXAMPLES list
+    val_indices = {3, 7, 17, 20, 22}   # indices into RAW_EXAMPLES list
     trainset = [ex for i, ex in enumerate(examples) if i not in val_indices]
     valset   = [ex for i, ex in enumerate(examples) if i in val_indices]
 
