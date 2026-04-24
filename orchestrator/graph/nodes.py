@@ -14,7 +14,8 @@ async def nlu_node(state: AgentState):
     try:
         nlu = await call_nlu(
             state["user_input"],
-            session_id=state["session_id"]
+            session_id=state["session_id"],
+            request_id=state.get("request_id", ""),
         )
 
     except Exception as e:
@@ -52,6 +53,7 @@ async def brain_node(state: AgentState):
             user_sentiment=state.get("sentiment", "neutral"),
             session_id=state["session_id"],
             history=state.get("history", []),
+            request_id=state.get("request_id", ""),
         )
 
     except Exception:
@@ -95,7 +97,11 @@ async def mouth_node(state: AgentState):
         return state
 
     try:
-        ms5 = await call_phraser(brain, language=state.get("language", "english"))
+        ms5 = await call_phraser(
+            brain,
+            language=state.get("language", "english"),
+            request_id=state.get("request_id", ""),
+        )
 
         logger.info("PHRASER RAW RESPONSE: %s", ms5)
 
