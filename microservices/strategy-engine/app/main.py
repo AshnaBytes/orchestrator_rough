@@ -53,7 +53,7 @@ async def health_check():
     return {"status": "ok", "service": "strategy-engine"}
 
 # --- Strategy Endpoint ---
-@app.post("/decide", response_model=StrategyOutput)
+@app.post("/api/v1/decide", response_model=StrategyOutput)
 async def decide_strategy(input_data: StrategyInput):
     """
     Main strategy endpoint.
