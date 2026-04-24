@@ -89,9 +89,23 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
         content={
-            "detail": "Too many requests. Please slow down.",
+            "error": True,
+            "code": "RATE_LIMITED",
+            "message": "Too many requests. Please slow down.",
             "retry_after": str(exc.detail),
         },
+    )
+
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if isinstance(exc.detail, dict) and "error" in exc.detail:
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": True, "code": "HTTP_ERROR", "message": str(exc.detail)},
     )
 
 
@@ -131,6 +145,7 @@ class ChatInput(BaseModel):
 
 class ChatOutput(BaseModel):
     response: str
+    is_fallback: bool = False
 
 
 # =====================================================
@@ -157,7 +172,7 @@ async def validate_session(payload: ChatInput) -> SessionData:
         )
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Invalid or expired session ID.",
+            detail={"error": True, "code": "SESSION_EXPIRED", "message": "Unauthorized: Invalid or expired session ID."},
         )
 
     # 2. Validate session structure
@@ -171,7 +186,7 @@ async def validate_session(payload: ChatInput) -> SessionData:
         )
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Session data is invalid or incomplete.",
+            detail={"error": True, "code": "SESSION_CORRUPT", "message": "Unauthorized: Session data is invalid or incomplete."},
         )
 
     return session
@@ -187,7 +202,7 @@ async def home():
 async def ping_redis():
     ok = await state_manager.ping_redis()
     if not ok:
-        raise HTTPException(status_code=503, detail="Redis not reachable")
+        raise HTTPException(status_code=503, detail={"error": True, "code": "REDIS_UNAVAILABLE", "message": "Redis not reachable"})
 
     test_sid = "ping-test-session"
     success = await state_manager.set_session(test_sid, {"hello": "redis"})
@@ -233,7 +248,7 @@ async def chat_endpoint(
             if latest_raw is None:
                 raise HTTPException(
                     status_code=401,
-                    detail="Unauthorized: Invalid or expired session ID.",
+                    detail={"error": True, "code": "SESSION_EXPIRED", "message": "Unauthorized: Invalid or expired session ID."},
                 )
 
             latest_session = SessionData(**latest_raw)
@@ -267,6 +282,7 @@ async def chat_endpoint(
                 )
                 brain_action = result.get("brain_action")
                 brain_key = result.get("response_key")
+                is_fallback = result.get("is_fallback", False)
 
             except Exception:
                 logger.exception("Graph failed, using safe fallback")
@@ -276,6 +292,7 @@ async def chat_endpoint(
                 )
                 brain_action = "FALLBACK"
                 brain_key = "GRAPH_FAIL"
+                is_fallback = True
 
             # --------------------------------------------
             # Save updated history back to Redis
@@ -299,7 +316,7 @@ async def chat_endpoint(
             updated_session["messages"] = history
             await state_manager.set_session(redis_key, updated_session)
 
-        return ChatOutput(response=ai_response)
+        return ChatOutput(response=ai_response, is_fallback=is_fallback)
 
     except HTTPException:
         raise
@@ -310,11 +327,11 @@ async def chat_endpoint(
         )
         raise HTTPException(
             status_code=409,
-            detail="Another request is already processing this session. Please retry.",
+            detail={"error": True, "code": "SESSION_LOCKED", "message": "Another request is already processing this session. Please retry."},
         )
 
     except Exception as e:
         logger.exception(
             "Unexpected error for session %s: %s", payload.user_id, e
         )
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail={"error": True, "code": "INTERNAL_ERROR", "message": "Internal server error"})
