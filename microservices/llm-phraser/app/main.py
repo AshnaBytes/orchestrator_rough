@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from .schemas import PhraserInput, PhraserOutput
+from prometheus_fastapi_instrumentator import Instrumentator
 from dotenv import load_dotenv
 
 # --- Load environment variables from .env file ---
@@ -45,6 +46,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Prometheus Instrumentation
+Instrumentator().instrument(app).expose(app)
 
 
 # ---------------------- Auth Middleware ----------------------

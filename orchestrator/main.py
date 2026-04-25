@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -72,6 +73,9 @@ async def lifespan(app: FastAPI):
 
 # ---------------------- App Init ----------------------
 app = FastAPI(title="INA Orchestrator", lifespan=lifespan)
+
+# Prometheus Instrumentation
+Instrumentator().instrument(app).expose(app)
 
 # Attach limiter to app state (required by slowapi)
 app.state.limiter = limiter

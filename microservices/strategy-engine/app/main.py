@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from .schemas import StrategyInput, StrategyOutput
 from .strategy_core import make_decision
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +22,9 @@ app = FastAPI(
                 "then securely decides the next negotiation step.",
     version="1.0.0"
 )
+
+# Prometheus Instrumentation
+Instrumentator().instrument(app).expose(app)
 
 
 # ---------------------- Auth Middleware ----------------------

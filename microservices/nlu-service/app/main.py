@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .schemas import NLUInput, NLUOutput
 from . import dspy_nlu
@@ -47,6 +48,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="NLU Service (MS2)", lifespan=lifespan)
+
+# Prometheus Instrumentation
+Instrumentator().instrument(app).expose(app)
 
 
 # ---------------------- Auth Middleware ----------------------
