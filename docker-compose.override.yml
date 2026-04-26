@@ -12,6 +12,20 @@
 
 services:
   orchestrator:
+    env_file:
+      - .env.dev
     command: uvicorn orchestrator.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./orchestrator:/app/orchestrator  # live code mount
+
+  strategy-engine:
+    env_file:
+      - .env.dev
+
+  nlu-service:
+    env_file:
+      - .env.dev
+
+  llm-phraser:
+    env_file:
+      - .env.dev
