@@ -20,7 +20,10 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Depends, Request
+from datetime import datetime, timezone
+import httpx
+
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
@@ -221,6 +224,44 @@ async def health_check():
     return {"status": "ok" if redis_ok else "degraded"}
 
 
+# ---------------------- DB Sync Task ----------------------
+async def send_negotiation_outcome_to_db(
+    session_id: str,
+    outcome: str,
+    asking_price: float,
+    final_price: float,
+    language: str,
+    history: list
+):
+    """Fire-and-forget task to send negotiation summary to external DB."""
+    try:
+        user_turns = sum(1 for msg in history if msg.get("from") == "user")
+        discount_percent = 0.0
+        if asking_price > 0 and final_price:
+            discount_percent = round(((asking_price - final_price) / asking_price) * 100, 2)
+            
+        payload = {
+            "session_id": session_id,
+            "outcome": outcome,
+            "asking_price": asking_price,
+            "final_price": final_price,
+            "discount_percent": discount_percent,
+            "total_turns": user_turns,
+            "user_language": language,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "ended_at": datetime.now(timezone.utc).isoformat(),
+            "message_history": history
+        }
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post("https://ina-backend-fyp.onrender.com/api/negotiations", json=payload)
+            resp.raise_for_status()
+            logger.info("Successfully sent negotiation outcome to DB for session %s", session_id)
+            
+    except Exception as e:
+        logger.error("Failed to send negotiation outcome to DB for session %s: %s", session_id, e)
+
+
 # =====================================================
 # 🔥 MAIN CHAT ENDPOINT (Session-Authenticated + Rate-Limited)
 # =====================================================
@@ -229,6 +270,7 @@ async def health_check():
 async def chat_endpoint(
     request: Request,
     payload: ChatInput,
+    background_tasks: BackgroundTasks,
     _validated_session: SessionData = Depends(validate_session),
 ):
     """
