@@ -318,6 +318,7 @@ async def chat_endpoint(
             # --------------------------------------------
             # LangGraph Execution
             # --------------------------------------------
+            result = None
             try:
                 state = {
                     "session_id": redis_key,
@@ -384,7 +385,7 @@ async def chat_endpoint(
                     history=history
                 )
 
-        deal_accepted = result.get("negotiation_status") == "deal_accepted" if result else False
+        deal_accepted = brain_action in ("ACCEPT", "DEAL")
         return ChatOutput(response=ai_response, is_fallback=is_fallback, deal_accepted=deal_accepted)
 
     except HTTPException:
