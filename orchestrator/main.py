@@ -159,6 +159,8 @@ class ChatOutput(BaseModel):
     response: str
     is_fallback: bool = False
     deal_accepted: bool = False
+    negotiation_status: str = "in_progress"   # "in_progress" | "deal_accepted" | "rejected"
+    final_price: float | None = None
 
 
 # =====================================================
@@ -386,7 +388,19 @@ async def chat_endpoint(
                 )
 
         deal_accepted = brain_action in ("ACCEPT", "DEAL")
-        return ChatOutput(response=ai_response, is_fallback=is_fallback, deal_accepted=deal_accepted)
+        negotiation_status = "deal_accepted" if deal_accepted else "in_progress"
+        final_price = (
+            float(result.get("counter_price") or result.get("user_offer") or 0.0)
+            if deal_accepted and result
+            else None
+        )
+        return ChatOutput(
+            response=ai_response,
+            is_fallback=is_fallback,
+            deal_accepted=deal_accepted,
+            negotiation_status=negotiation_status,
+            final_price=final_price,
+        )
 
     except HTTPException:
         raise
