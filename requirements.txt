@@ -153,3 +153,9 @@ watchfiles
 wcwidth
 websockets
 yarl
+prometheus-fastapi-instrumentator>=7.0.0
+langgraph>=1.0.7
+langchain-core>=1.2.7
+slowapi>=0.1.9
+gunicorn>=21.0.0
+redis>=7.0.1
