@@ -23,6 +23,7 @@ class AgentState(TypedDict, total=False):
     # Final
     final_response: str
     is_fallback: bool
+    negotiation_status: str   # e.g. "in_progress", "deal_accepted", "rejected"
     
     # Internal
     _brain_raw: Dict[str, Any]

@@ -158,6 +158,7 @@ class ChatInput(BaseModel):
 class ChatOutput(BaseModel):
     response: str
     is_fallback: bool = False
+    deal_accepted: bool = False
 
 
 # =====================================================
@@ -383,7 +384,8 @@ async def chat_endpoint(
                     history=history
                 )
 
-        return ChatOutput(response=ai_response, is_fallback=is_fallback)
+        deal_accepted = result.get("negotiation_status") == "deal_accepted" if result else False
+        return ChatOutput(response=ai_response, is_fallback=is_fallback, deal_accepted=deal_accepted)
 
     except HTTPException:
         raise

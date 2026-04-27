@@ -77,6 +77,15 @@ async def brain_node(state: AgentState):
     state["response_key"] = brain.get("response_key")
     state["is_fallback"] = state.get("is_fallback", False) or brain.get("is_fallback", False)
 
+    # ⭐ Negotiation status
+    _action = brain.get("action", "")
+    if _action in ("ACCEPT", "DEAL"):
+        state["negotiation_status"] = "deal_accepted"
+    elif _action == "REJECT":
+        state["negotiation_status"] = "rejected"
+    else:
+        state["negotiation_status"] = "in_progress"
+
     
     # ⭐ Guarantee MS5 contract fields
     brain.setdefault("policy_type", "rule-based")
@@ -201,6 +210,12 @@ async def fast_track_node(state: AgentState):
     state["brain_action"] = action
     state["response_key"] = response_key
     state["_brain_raw"]   = mock_brain
+
+    # ⭐ Negotiation status for fast-track
+    if intent == Intent.DEAL:
+        state["negotiation_status"] = "deal_accepted"
+    else:
+        state["negotiation_status"] = "in_progress"
 
     logger.info("FAST TRACK: intent=%s → action=%s, key=%s", intent, action, response_key)
     return state
