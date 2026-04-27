@@ -81,6 +81,16 @@ RAW_EXAMPLES = [
         "intent": "MAKE_OFFER", "price": "500.0",
         "sentiment": "negative", "language": "roman_urdu", "error_message": "None",
     },
+    {
+        "user_message": "500",
+        "intent": "MAKE_OFFER", "price": "500.0",
+        "sentiment": "neutral", "language": "english", "error_message": "None",
+    },
+    {
+        "user_message": "1200",
+        "intent": "MAKE_OFFER", "price": "1200.0",
+        "sentiment": "neutral", "language": "english", "error_message": "None",
+    },
     # --- INVALID ---
     {
         "user_message": "My offer is 5000/4 dollars",
