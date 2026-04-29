@@ -11,6 +11,9 @@ Expected Redis session format (JSON):
     "mam": 150.0,
     "asking_price": 200.0,
     "messages": [],
+    "offer_count": 0,
+    "status": "negotiating",
+    "last_bot_offer": null,
     "tenant_id": "tenant_abc",       # optional
     "product_id": "prod_xyz",        # optional
     "created_at": "2026-04-08T..."   # optional
@@ -42,6 +45,20 @@ class SessionData(BaseModel):
     messages: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Conversation history for this session.",
+    )
+
+    # --- Offer Limit & Lock State (managed by the orchestrator) ---
+    offer_count: int = Field(
+        default=0,
+        description="Number of valid monetary offers made by the user so far.",
+    )
+    status: str = Field(
+        default="negotiating",
+        description="Session status: 'negotiating' or 'locked'.",
+    )
+    last_bot_offer: Optional[float] = Field(
+        default=None,
+        description="The last counter-offer made by the bot. Returned as final price after lock.",
     )
 
     # --- Optional Metadata (useful for logging/analytics) ---
