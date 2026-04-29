@@ -21,7 +21,10 @@ LLM_PHRASER_URL = os.getenv("LLM_PHRASER_URL", "http://llm-phraser:8000")
 _breaker = CircuitBreaker("llm-phraser", failure_threshold=5, recovery_timeout=30)
 
 # Fallback when LLM Phraser is down
-_FALLBACK = {"response_text": "Let me think about that for a moment.", "is_fallback": True}
+_FALLBACK = {
+    "response_text": "Let me think about that for a moment.",
+    "is_fallback": True,
+}
 
 
 @retry(
@@ -35,14 +38,18 @@ async def _call_phraser_with_retry(payload: dict, request_id: str = "") -> dict:
     """Raw HTTP call to LLM Phraser with retry logic."""
     client = get_http_client()
     headers = {"X-Request-ID": request_id} if request_id else {}
-    resp = await client.post(f"{LLM_PHRASER_URL}/api/v1/phrase", json=payload, headers=headers)
+    resp = await client.post(
+        f"{LLM_PHRASER_URL}/api/v1/phrase", json=payload, headers=headers
+    )
     resp.raise_for_status()
     data = resp.json()
     data["is_fallback"] = False
     return data
 
 
-async def call_phraser(brain_output: dict, language: str = "english", request_id: str = "") -> dict:
+async def call_phraser(
+    brain_output: dict, language: str = "english", request_id: str = ""
+) -> dict:
     """
     Call the LLM Phraser with:
     - Connection pooling (shared httpx client)
@@ -60,10 +67,17 @@ async def call_phraser(brain_output: dict, language: str = "english", request_id
         "language": language,
     }
 
-    logger.info("[rid=%s][Phraser] Sending: action=%s key=%s", request_id, phraser_payload.get("action"), phraser_payload.get("response_key"))
+    logger.info(
+        "[rid=%s][Phraser] Sending: action=%s key=%s",
+        request_id,
+        phraser_payload.get("action"),
+        phraser_payload.get("response_key"),
+    )
 
     try:
-        data = await _breaker.call(_call_phraser_with_retry, phraser_payload, request_id)
+        data = await _breaker.call(
+            _call_phraser_with_retry, phraser_payload, request_id
+        )
         logger.info(f"[Phraser] RAW RESPONSE ← {data}")
         return data
 

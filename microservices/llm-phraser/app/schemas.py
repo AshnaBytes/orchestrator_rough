@@ -9,87 +9,83 @@ from typing import Literal, Dict, Any, Optional
 #  API Input Schema (THE FIREWALL)
 # =======================================================================
 
+
 class PhraserInput(BaseModel):
     """
     The data payload sent FROM the Orchestrator (originating from MS 4)
     TO this service (MS 5: The Mouth).
-    
+
     This schema *IS* the security boundary. It is structurally
     impossible for 'mam' or other secrets to be passed in.
     """
-    
+
     # The command from MS 4 (The Brain) or the Orchestrator Fast-Track Router
-    action: Literal["ACCEPT", "REJECT", "COUNTER", "GREETING", "FAREWELL", "INFO"] = Field(
-        ..., 
-        description="The negotiation or conversational action to take."
+    action: Literal["ACCEPT", "REJECT", "COUNTER", "GREETING", "FAREWELL", "INFO"] = (
+        Field(..., description="The negotiation or conversational action to take.")
     )
-    
+
     # The key for this service to select the right prompt
     response_key: str = Field(
-        ..., 
-        description="A structured key to select the response template."
+        ..., description="A structured key to select the response template."
     )
-    
+
     # Optional field, only present if action is 'COUNTER'
     counter_price: Optional[float] = Field(
-        default=None, 
-        description="The new price to offer (if action is COUNTER)."
+        default=None, description="The new price to offer (if action is COUNTER)."
     )
-    
+
     # Language detected by the NLU service — used to match response language
     language: str = Field(
         default="english",
-        description="Language detected by NLU: english, roman_urdu, urdu, other."
+        description="Language detected by NLU: english, roman_urdu, urdu, other.",
     )
-    
+
     # --- Auditing & Metadata (from MS 4) ---
     policy_type: str = Field(
-        ...,
-        description="The type of policy that made this decision."
+        ..., description="The type of policy that made this decision."
     )
-    
+
     policy_version: Optional[str] = Field(
-        default=None,
-        description="The version of the policy used."
+        default=None, description="The version of the policy used."
     )
-    
+
     decision_metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Additional data for audit/logging from MS 4."
+        default=None, description="Additional data for audit/logging from MS 4."
     )
 
     # --- Pydantic v2 Update ---
     model_config = ConfigDict(
-        json_schema_extra = {
+        json_schema_extra={
             "example": {
                 "action": "COUNTER",
                 "response_key": "STANDARD_COUNTER",
                 "counter_price": 48000.0,
                 "policy_type": "rule-based",
                 "policy_version": "1.1.0",
-                "decision_metadata": {"rule": "standard_counter_midpoint"}
+                "decision_metadata": {"rule": "standard_counter_midpoint"},
             }
         }
     )
 
+
 # =======================================================================
 #  API Output Schema
 # =======================================================================
+
 
 class PhraserOutput(BaseModel):
     """
     The data payload sent FROM this service (MS 5)
     TO the Dialogue Orchestrator (MS 1), to be shown to the user.
     """
-    
+
     response_text: str = Field(
-        ..., 
-        description="The final, AI-generated, persuasive text response."
+        ..., description="The final, AI-generated, persuasive text response."
     )
-    
+
     # --- Pydantic v2 Update ---
     model_config = ConfigDict(
-        json_schema_extra = {
+        json_schema_extra={
             "example": {
                 "response_text": "That's a bit lower than we were expecting. Based on the market, I can meet you at $48,000. How does that sound?"
             }

@@ -1,4 +1,4 @@
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph
 from orchestrator.graph.state import AgentState
 from orchestrator.graph.nodes import nlu_node, brain_node, mouth_node, fast_track_node
 from orchestrator.lib.intents import Intent
@@ -39,10 +39,10 @@ def route_after_nlu(state: AgentState) -> str:
 def build_workflow():
     graph = StateGraph(AgentState)
 
-    graph.add_node("nlu",        nlu_node)
-    graph.add_node("brain",      brain_node)
+    graph.add_node("nlu", nlu_node)
+    graph.add_node("brain", brain_node)
     graph.add_node("fast_track", fast_track_node)
-    graph.add_node("mouth",      mouth_node)
+    graph.add_node("mouth", mouth_node)
 
     graph.set_entry_point("nlu")
 
@@ -50,7 +50,7 @@ def build_workflow():
     graph.add_conditional_edges("nlu", route_after_nlu)
 
     # Both paths converge at the Phraser
-    graph.add_edge("brain",      "mouth")
+    graph.add_edge("brain", "mouth")
     graph.add_edge("fast_track", "mouth")
 
     return graph.compile()

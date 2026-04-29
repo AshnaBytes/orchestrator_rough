@@ -39,12 +39,13 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down...")
 
+
 app = FastAPI(
     title="INA LLM Phraser (MS 5 - The Mouth)",
     description="This service receives a *command* (not secrets) "
-                "and phrases it persuasively using an LLM.",
+    "and phrases it persuasively using an LLM.",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Prometheus Instrumentation
@@ -78,26 +79,29 @@ async def get_groq_client():
         raise HTTPException(status_code=503, detail="Groq client is not available.")
     return app.state.groq_client
 
+
 # --- Health Check Endpoint ---
 @app.get("/health", status_code=200)
 async def health_check():
     return {"status": "ok", "service": "llm-phraser"}
 
+
 # --- LLM Phrasing Endpoint ---
 @app.post("/api/v1/phrase", response_model=PhraserOutput)
 async def generate_phrase(
-    input_data: PhraserInput,
-    client: AsyncGroq = Depends(get_groq_client)
+    input_data: PhraserInput, client: AsyncGroq = Depends(get_groq_client)
 ):
     """
     Receives a command from the Strategy Engine (MS 4) and
     generates a persuasive, natural language response.
     """
-    
+
     try:
         response_text = await generate_llm_response(input_data, client)
         return PhraserOutput(response_text=response_text)
 
     except Exception as e:
         logger.error(f"Unhandled error in /phrase endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An internal server error occurred.")
+        raise HTTPException(
+            status_code=500, detail="An internal server error occurred."
+        )

@@ -44,7 +44,9 @@ def get_redis_client() -> redis.Redis:
     return _redis_client
 
 
-async def set_session(session_id: str, data: dict, expire: int = REDIS_EXPIRE_SECONDS) -> bool:
+async def set_session(
+    session_id: str, data: dict, expire: int = REDIS_EXPIRE_SECONDS
+) -> bool:
     """
     Save a session dict to Redis (JSON serialized).
     Returns True on success, False on failure.
@@ -154,7 +156,10 @@ async def session_lock(
         await asyncio.sleep(0.05)
 
     if not acquired:
-        logger.warning("Could not acquire lock for session %s — concurrent request in progress", session_id)
+        logger.warning(
+            "Could not acquire lock for session %s — concurrent request in progress",
+            session_id,
+        )
         raise HTTPException(
             status_code=429,
             detail="Another request is already being processed for this session. Please retry in a moment.",

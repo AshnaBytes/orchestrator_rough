@@ -7,19 +7,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 # This is the "Adapter" for our LLM.
 # All the logic for calling the Groq API lives here.
-async def generate_llm_response(
-    input_data: PhraserInput,
-    client: AsyncGroq
-) -> str:
+async def generate_llm_response(input_data: PhraserInput, client: AsyncGroq) -> str:
     """
     Generates a persuasive response from the Groq API.
     """
-    
+
     # 1. Get the prompt
     system_prompt, user_prompt = get_formatted_prompt(input_data)
-    
+
     logger.info(f"Generating phrase for key: {input_data.response_key}")
 
     # 2. Call Groq API
@@ -35,14 +33,14 @@ async def generate_llm_response(
                     "content": user_prompt,
                 },
             ],
-            model="llama-3.3-70b-versatile", # Fast and capable model
+            model="llama-3.3-70b-versatile",  # Fast and capable model
             temperature=1,
             max_tokens=512,
         )
-        
+
         # 3. Parse and return the response
         response_text = chat_completion.choices[0].message.content
-        
+
         if not response_text:
             logger.error("LLM returned an empty response.")
             return "I'm sorry, I'm not sure how to respond to that."

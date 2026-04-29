@@ -96,13 +96,9 @@ class NLUSignature(dspy.Signature):
         )
     )
 
-    sentiment: str = dspy.OutputField(
-        desc="One of: positive, neutral, negative"
-    )
+    sentiment: str = dspy.OutputField(desc="One of: positive, neutral, negative")
 
-    language: str = dspy.OutputField(
-        desc="One of: english, roman_urdu, urdu, other"
-    )
+    language: str = dspy.OutputField(desc="One of: english, roman_urdu, urdu, other")
 
     error_message: str = dspy.OutputField(
         desc="If intent is INVALID, provide a brief 1-sentence refusal explaining why, written in the same language as the user. NEVER use native Urdu/Arabic script (اردو). Use ONLY the Latin alphabet (English or Roman Urdu). If intent is not INVALID, write 'None'"
@@ -147,9 +143,16 @@ def _parse_price(raw: str) -> Optional[float]:
 # Intent sanitizer — guards against LLM returning unexpected strings
 # ---------------------------------------------------------------------------
 _VALID_INTENTS = {
-    "GREET", "BYE", "MAKE_OFFER", "DEAL",
-    "ASK_PREVIOUS_OFFER", "ASK_QUESTION", "INVALID", "UNKNOWN"
+    "GREET",
+    "BYE",
+    "MAKE_OFFER",
+    "DEAL",
+    "ASK_PREVIOUS_OFFER",
+    "ASK_QUESTION",
+    "INVALID",
+    "UNKNOWN",
 }
+
 
 def _sanitize_intent(raw: str) -> str:
     candidate = raw.strip().upper()
@@ -234,7 +237,8 @@ async def parse(text: str, module: NLUModule) -> dict:
     # Normalize error_message
     raw_error = result.error_message or ""
     error_message = (
-        None if raw_error.strip().lower() in ("none", "null", "n/a", "")
+        None
+        if raw_error.strip().lower() in ("none", "null", "n/a", "")
         else raw_error.strip()
     )
 
@@ -248,7 +252,10 @@ async def parse(text: str, module: NLUModule) -> dict:
 
     logger.info(
         "[DSPy NLU] Result: intent=%s price=%s sentiment=%s language=%s",
-        intent, price, result.sentiment, result.language,
+        intent,
+        price,
+        result.sentiment,
+        result.language,
     )
 
     return {

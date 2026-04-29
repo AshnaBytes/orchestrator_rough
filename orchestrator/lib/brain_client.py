@@ -12,12 +12,10 @@ from tenacity import (
 
 from orchestrator.lib.http_pool import get_http_client
 from orchestrator.lib.circuit_breaker import CircuitBreaker, CircuitOpenError
-from orchestrator.lib.intents import Intent
 
 logger = logging.getLogger("brain_client")
 
 STRATEGY_ENGINE_URL = os.getenv("STRATEGY_ENGINE_URL", "http://strategy-engine:8000")
-
 
 
 # Circuit breaker: opens after 5 failures, recovers after 30s
@@ -48,7 +46,9 @@ async def _call_brain_with_retry(payload: dict, request_id: str = "") -> dict:
     """Raw HTTP call to Strategy Engine with retry logic."""
     client = get_http_client()
     headers = {"X-Request-ID": request_id} if request_id else {}
-    resp = await client.post(f"{STRATEGY_ENGINE_URL}/api/v1/decide", json=payload, headers=headers)
+    resp = await client.post(
+        f"{STRATEGY_ENGINE_URL}/api/v1/decide", json=payload, headers=headers
+    )
     resp.raise_for_status()
     data = resp.json()
     data["is_fallback"] = False
@@ -56,8 +56,14 @@ async def _call_brain_with_retry(payload: dict, request_id: str = "") -> dict:
 
 
 async def call_brain(
-    mam, asking_price, user_offer, user_intent, user_sentiment, session_id, history,
-    request_id: str = ""
+    mam,
+    asking_price,
+    user_offer,
+    user_intent,
+    user_sentiment,
+    session_id,
+    history,
+    request_id: str = "",
 ) -> dict:
     """
     Call the Strategy Engine with:
@@ -82,7 +88,10 @@ async def call_brain(
 
     logger.info(
         "[rid=%s][MS4] Sending to Brain: session=%s, intent=%s, offer=%s",
-        request_id, session_id, user_intent, user_offer,
+        request_id,
+        session_id,
+        user_intent,
+        user_offer,
     )
 
     try:

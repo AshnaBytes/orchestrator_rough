@@ -18,7 +18,7 @@ async def nlu_node(state: AgentState):
             request_id=state.get("request_id", ""),
         )
 
-    except Exception as e:
+    except Exception:
         # Safe fallback if NLU fails — use UNKNOWN intent, not a raw string
         nlu = {
             "intent": Intent.UNKNOWN,
@@ -35,10 +35,11 @@ async def nlu_node(state: AgentState):
     state["is_fallback"] = nlu.get("is_fallback", False)
 
     if state["intent"] == Intent.INVALID:
-        state["final_response"] = state["error_message"] or "I cannot process that input, please try again."
+        state["final_response"] = (
+            state["error_message"] or "I cannot process that input, please try again."
+        )
 
     logger.info("NLU RAW: %s", nlu)
-
 
     return state
 
@@ -75,7 +76,9 @@ async def brain_node(state: AgentState):
     state["brain_action"] = brain.get("action")
     state["counter_price"] = brain.get("counter_price")
     state["response_key"] = brain.get("response_key")
-    state["is_fallback"] = state.get("is_fallback", False) or brain.get("is_fallback", False)
+    state["is_fallback"] = state.get("is_fallback", False) or brain.get(
+        "is_fallback", False
+    )
 
     # ⭐ Negotiation status
     _action = brain.get("action", "")
@@ -86,7 +89,6 @@ async def brain_node(state: AgentState):
     else:
         state["negotiation_status"] = "in_progress"
 
-    
     # ⭐ Guarantee MS5 contract fields
     brain.setdefault("policy_type", "rule-based")
     brain.setdefault("policy_version", "v1")
@@ -96,10 +98,11 @@ async def brain_node(state: AgentState):
     state["_brain_raw"] = brain
     logger.info("BRAIN RAW: %s", brain)
 
-
     return state
 
+
 # ----------- MOUTH NODE ----------
+
 
 async def mouth_node(state: AgentState):
 
@@ -138,7 +141,9 @@ async def mouth_node(state: AgentState):
             response_text = str(ms5)
 
         state["final_response"] = response_text
-        state["is_fallback"] = state.get("is_fallback", False) or ms5.get("is_fallback", False)
+        state["is_fallback"] = state.get("is_fallback", False) or ms5.get(
+            "is_fallback", False
+        )
 
     except Exception as e:
         logger.exception("Mouth Error: %s", e)
@@ -166,11 +171,11 @@ async def fast_track_node(state: AgentState):
 
     # Map each fast-track intent to its Phraser response_key
     FAST_TRACK_MAP = {
-        Intent.GREET:              ("GREETING",          "GREET_HELLO"),
-        Intent.BYE:                ("FAREWELL",          "BYE_GOODBYE"),
-        Intent.DEAL:               ("ACCEPT",            "DEAL_ACCEPTED"),
-        Intent.ASK_PREVIOUS_OFFER: ("INFO",              "PREVIOUS_OFFER"),
-        Intent.ASK_QUESTION:       ("INFO",              "OUT_OF_SCOPE_QUESTION"),
+        Intent.GREET: ("GREETING", "GREET_HELLO"),
+        Intent.BYE: ("FAREWELL", "BYE_GOODBYE"),
+        Intent.DEAL: ("ACCEPT", "DEAL_ACCEPTED"),
+        Intent.ASK_PREVIOUS_OFFER: ("INFO", "PREVIOUS_OFFER"),
+        Intent.ASK_QUESTION: ("INFO", "OUT_OF_SCOPE_QUESTION"),
     }
 
     action, response_key = FAST_TRACK_MAP.get(intent, ("INFO", "DEFAULT"))
@@ -199,17 +204,17 @@ async def fast_track_node(state: AgentState):
 
     # Build a mock brain output shaped exactly like Strategy Engine output
     mock_brain = {
-        "action":            action,
-        "response_key":      response_key,
-        "counter_price":     None,
-        "policy_type":       "fast-track",
-        "policy_version":    "1.0",
+        "action": action,
+        "response_key": response_key,
+        "counter_price": None,
+        "policy_type": "fast-track",
+        "policy_version": "1.0",
         "decision_metadata": decision_metadata,
     }
 
     state["brain_action"] = action
     state["response_key"] = response_key
-    state["_brain_raw"]   = mock_brain
+    state["_brain_raw"] = mock_brain
 
     # ⭐ Negotiation status for fast-track
     if intent == Intent.DEAL:
@@ -217,6 +222,7 @@ async def fast_track_node(state: AgentState):
     else:
         state["negotiation_status"] = "in_progress"
 
-    logger.info("FAST TRACK: intent=%s → action=%s, key=%s", intent, action, response_key)
+    logger.info(
+        "FAST TRACK: intent=%s → action=%s, key=%s", intent, action, response_key
+    )
     return state
-

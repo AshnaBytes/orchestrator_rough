@@ -19,8 +19,8 @@ INTERNAL_KEY = os.getenv("INTERNAL_SERVICE_KEY", "")
 app = FastAPI(
     title="INA Strategy Engine (MS 4 - The Brain)",
     description="This service receives financial context and user offers, "
-                "then securely decides the next negotiation step.",
-    version="1.0.0"
+    "then securely decides the next negotiation step.",
+    version="1.0.0",
 )
 
 # Prometheus Instrumentation
@@ -56,6 +56,7 @@ async def health_check():
     """
     return {"status": "ok", "service": "strategy-engine"}
 
+
 # --- Strategy Endpoint ---
 @app.post("/api/v1/decide", response_model=StrategyOutput)
 async def decide_strategy(input_data: StrategyInput):
@@ -66,15 +67,14 @@ async def decide_strategy(input_data: StrategyInput):
     """
     try:
         logger.info(f"Received request for session: {input_data.session_id}")
-        
+
         decision = make_decision(input_data)
-        
+
         logger.info(f"Decision for {input_data.session_id}: {decision.action}")
         return decision
-        
+
     except Exception as e:
-        logger.error(f"Error during decision for {input_data.session_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {e}"
+        logger.error(
+            f"Error during decision for {input_data.session_id}: {e}", exc_info=True
         )
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")

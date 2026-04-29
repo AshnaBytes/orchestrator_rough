@@ -104,7 +104,7 @@ class CircuitBreaker:
             self._on_success()
             return result
 
-        except Exception as exc:
+        except Exception:
             self._on_failure()
             raise
 

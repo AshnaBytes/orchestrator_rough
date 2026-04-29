@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------- Config ----------------------
 INTERNAL_KEY = os.getenv("INTERNAL_SERVICE_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 
 # ---------------------- Lifespan ----------------------
@@ -92,10 +92,10 @@ def _deterministic_fallback(text: str) -> dict:
     """
     t = text.lower().strip()
 
-    greetings  = r"\b(hi|hello|hey|salam|salam alaikum)\b"
-    farewells  = r"\b(bye|goodbye|khuda hafiz|alvida)\b"
+    greetings = r"\b(hi|hello|hey|salam|salam alaikum)\b"
+    farewells = r"\b(bye|goodbye|khuda hafiz|alvida)\b"
     deal_words = r"\b(deal|agreed|accept|theek hai deal|done)\b"
-    price_pat  = r"\$?\s*(\d{2,}(?:[.,]\d+)?)"
+    price_pat = r"\$?\s*(\d{2,}(?:[.,]\d+)?)"
 
     if re.search(greetings, t):
         intent, price = "GREET", None
@@ -107,7 +107,7 @@ def _deterministic_fallback(text: str) -> dict:
         m = re.search(price_pat, t)
         if m:
             intent = "MAKE_OFFER"
-            price  = float(m.group(1).replace(",", ""))
+            price = float(m.group(1).replace(",", ""))
         else:
             intent, price = "ASK_QUESTION", None
 
@@ -115,7 +115,7 @@ def _deterministic_fallback(text: str) -> dict:
         "intent": intent,
         "price": price,
         "sentiment": "neutral",
-        "language": "english",   # can't detect language without LLM
+        "language": "english",  # can't detect language without LLM
         "error_message": None,
     }
 

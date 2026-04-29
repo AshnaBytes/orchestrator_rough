@@ -43,21 +43,19 @@ def get_http_client() -> httpx.AsyncClient:
     if _client is None:
         _client = httpx.AsyncClient(
             timeout=httpx.Timeout(
-                connect=5.0,    # max time to establish TCP connection
-                read=15.0,      # max time waiting for response body
-                write=5.0,      # max time sending request body
-                pool=10.0,      # max time waiting for a connection from the pool
+                connect=5.0,  # max time to establish TCP connection
+                read=15.0,  # max time waiting for response body
+                write=5.0,  # max time sending request body
+                pool=10.0,  # max time waiting for a connection from the pool
             ),
             limits=httpx.Limits(
-                max_connections=100,             # total concurrent connections
-                max_keepalive_connections=20,     # idle connections kept alive
-                keepalive_expiry=30,             # seconds before idle connection is closed
+                max_connections=100,  # total concurrent connections
+                max_keepalive_connections=20,  # idle connections kept alive
+                keepalive_expiry=30,  # seconds before idle connection is closed
             ),
             headers={"X-Internal-Key": INTERNAL_KEY},
         )
-        logger.info(
-            "HTTP connection pool created (max_conn=100, keepalive=20)"
-        )
+        logger.info("HTTP connection pool created (max_conn=100, keepalive=20)")
     return _client
 
 

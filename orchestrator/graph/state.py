@@ -12,7 +12,7 @@ class AgentState(TypedDict, total=False):
     intent: str
     sentiment: str
     user_offer: float
-    language: str   # detected language: english, roman_urdu, urdu, other
+    language: str  # detected language: english, roman_urdu, urdu, other
     error_message: str
 
     # Brain outputs
@@ -23,7 +23,7 @@ class AgentState(TypedDict, total=False):
     # Final
     final_response: str
     is_fallback: bool
-    negotiation_status: str   # e.g. "in_progress", "deal_accepted", "rejected"
-    
+    negotiation_status: str  # e.g. "in_progress", "deal_accepted", "rejected"
+
     # Internal
     _brain_raw: Dict[str, Any]
