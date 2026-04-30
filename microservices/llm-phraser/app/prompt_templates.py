@@ -134,7 +134,7 @@ def get_formatted_prompt(input_data: PhraserInput) -> Tuple[str, str]:
                 user_offer=user_offer, bot_offer=bot_offer
             )
         else:
-            price_str = f"${price:,.0f}" if price is not None else ""
+            price_str = f"Rs {price:,.0f}" if price is not None else ""
             formatted_prompt = selected_template.format(price=price_str)
     except Exception as e:
         logger.exception("Error formatting prompt: %s", e)
