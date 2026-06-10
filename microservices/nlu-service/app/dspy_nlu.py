@@ -184,22 +184,22 @@ def build_nlu_module(openai_api_key: str, groq_api_key: str) -> NLUModule:
     """
     Configure DSPy LMs and return a ready-to-use NLUModule.
 
-    Sets up OpenAI (gpt-4o) as the primary LM and Groq (llama-3.1-8b-instant)
+    Sets up OpenAI (gpt-4o-mini) as the primary LM and Groq (llama-3.1-8b-instant)
     as the fallback. Loads compiled state if available.
     """
     primary_lm = dspy.LM(
-        model="openai/gpt-4o",
+        model="openai/gpt-4o-mini",
         api_key=openai_api_key,
         temperature=0.0,
-        max_tokens=400,
-        cache=False,
+        max_tokens=300,
+        cache=True,
     )
     fallback_lm = dspy.LM(
         model="groq/llama-3.1-8b-instant",
         api_key=groq_api_key,
         temperature=0.0,
-        max_tokens=400,
-        cache=False,
+        max_tokens=300,
+        cache=True,
     )
 
     dspy.configure(lm=primary_lm)
@@ -264,6 +264,21 @@ async def parse(text: str, module: NLUModule) -> dict:
     # Enforce: error_message only makes sense on INVALID
     if intent != "INVALID":
         error_message = None
+
+    # Log token usage + estimated cost for this request
+    try:
+        history = module.primary_lm.history
+        if history:
+            usage = history[-1].get("usage", {})
+            in_tok  = usage.get("prompt_tokens", 0)
+            out_tok = usage.get("completion_tokens", 0)
+            cost    = in_tok * 0.15 / 1_000_000 + out_tok * 0.60 / 1_000_000
+            logger.info(
+                "[DSPy NLU] tokens in=%d out=%d cost=$%.6f",
+                in_tok, out_tok, cost,
+            )
+    except Exception:
+        pass
 
     logger.info(
         "[DSPy NLU] Result: intent=%s price=%s sentiment=%s language=%s",
