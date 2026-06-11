@@ -188,7 +188,7 @@ def build_nlu_module(openai_api_key: str, groq_api_key: str) -> NLUModule:
     as the fallback. Loads compiled state if available.
     """
     primary_lm = dspy.LM(
-        model="openai/gpt-4o-mini",
+        model="openai/gpt-4o",
         api_key=openai_api_key,
         temperature=0.0,
         max_tokens=300,
